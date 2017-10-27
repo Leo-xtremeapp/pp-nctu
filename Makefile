@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-pthread
+CFLAGS=-pthread -std=gnu99 -O2 -s
 
 all:
 	$(CC) pi.c $(CFLAGS) -o pi
