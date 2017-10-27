@@ -20,8 +20,8 @@ void* tossDart() {
 
 	for (unlong i = 0; i < round_per_thread; i++) {
 		// var
-		double x = (double) rand() / (RAND_MAX + 1.0);
-		double y = (double) rand() / (RAND_MAX + 1.0);
+		double x = (double) rand() / RAND_MAX * 2.0 - 1.0;
+		double y = (double) rand() / RAND_MAX * 2.0 - 1.0;
 
 		if (x * x + y * y <= 1)
 			count++;
