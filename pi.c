@@ -1,0 +1,72 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <time.h>
+
+typedef unsigned long long unlong;
+
+// global
+unlong count_in_circle;
+unlong round_per_thread;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+void* tossDart() {
+	// var
+	unlong count = 0;
+
+	// init
+	srand(time(NULL));
+
+	for (unlong i = 0; i < round_per_thread; i++) {
+		// var
+		double x = (double) rand() / (RAND_MAX + 1.0);
+		double y = (double) rand() / (RAND_MAX + 1.0);
+
+		if (x * x + y * y <= 1)
+			count++;
+	}
+
+	// critical section
+	pthread_mutex_lock(&lock);
+	count_in_circle += count;
+	pthread_mutex_unlock(&lock);
+
+	return NULL;
+}
+
+int main(int argc, char *argv[]) {
+	if (argc != 3) {
+		fprintf(stderr, "usage: ./pi <num_of_cpu> <num_of_toss>\n");
+		exit(1);
+	}
+
+	// var
+	unlong num_of_cpu = atoll(argv[1]);
+	unlong num_of_toss = atoll(argv[2]);
+	pthread_attr_t attr;
+	pthread_t* threads = malloc(num_of_cpu * sizeof(pthread_t));
+
+	// init
+	count_in_circle = 0;
+	round_per_thread = num_of_toss / num_of_cpu;
+	pthread_attr_init(&attr);
+	pthread_mutex_init(&lock, NULL);
+
+	for (unlong i = 0; i < num_of_cpu; i++) {
+		if (pthread_create(&threads[i], &attr, tossDart, (void *) NULL)) {
+			printf("Error: pthread_create()\n");
+			exit(1);
+		}
+	}
+
+	for (unlong i = 0; i < num_of_cpu; i++) {
+		pthread_join(threads[i], NULL);
+	}
+
+	free(threads);
+	pthread_mutex_destroy(&lock);
+
+	printf("%lf\n", (double)count_in_circle * 4 / num_of_toss);
+
+	return 0;
+}
