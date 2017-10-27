@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <time.h>
+#include <sys/time.h>
 
 typedef unsigned long long unlong;
 
@@ -41,6 +42,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	// var
+	double pi_estimate;
+	double elapsed_time;
+	struct timeval t1, t2;
 	unlong num_of_cpu = atoll(argv[1]);
 	unlong num_of_toss = atoll(argv[2]);
 	pthread_attr_t attr;
@@ -51,6 +55,9 @@ int main(int argc, char *argv[]) {
 	round_per_thread = num_of_toss / num_of_cpu;
 	pthread_attr_init(&attr);
 	pthread_mutex_init(&lock, NULL);
+
+	// start measurement
+	gettimeofday(&t1, NULL);
 
 	for (unlong i = 0; i < num_of_cpu; i++) {
 		if (pthread_create(&threads[i], &attr, tossDart, (void *) NULL)) {
@@ -63,10 +70,19 @@ int main(int argc, char *argv[]) {
 		pthread_join(threads[i], NULL);
 	}
 
+	// end measurement
+	gettimeofday(&t2, NULL);
+
 	free(threads);
 	pthread_mutex_destroy(&lock);
 
-	printf("%lf\n", (double)count_in_circle * 4 / num_of_toss);
+	// calculate result
+	pi_estimate = (double)count_in_circle * 4 / num_of_toss;
+	elapsed_time = (t2.tv_sec - t1.tv_sec) * 1000;
+	elapsed_time += (t2.tv_usec - t1.tv_usec) / 1000;
+
+	printf("PI: %lf\n", pi_estimate);
+	printf("Elapsed Time: %lf seconds\n", elapsed_time / 1000);
 
 	return 0;
 }
