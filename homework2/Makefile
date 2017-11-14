@@ -28,4 +28,4 @@ clean:
 run:
 	${MAKE}
 	taskset -c 0 ./bin/cg | grep -E 'Execution\ time*'
-	taskset -c 0-3 ./bin/cg | grep -E 'Execution\ time*'
+	taskset -c 0-7 ./bin/cg | grep -E 'Execution\ time*'
