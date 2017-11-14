@@ -24,3 +24,8 @@ clean:
 	- rm -f *.o *~
 	rm -f ${COMMON}/*.o
 	rm -f bin/*
+
+run:
+	${MAKE}
+	taskset -c 0 ./bin/cg | grep -E 'Execution\ time*'
+	taskset -c 0-3 ./bin/cg | grep -E 'Execution\ time*'
