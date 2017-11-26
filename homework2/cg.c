@@ -358,6 +358,7 @@ static void conj_grad(int colidx[],
     // Obtain p.q
     //---------------------------------------------------------------------
     d = 0.0;
+    //# pragma omp parallel for private(d)
     for (j = 0; j < lastcol - firstcol + 1; j++) {
       d = d + p[j]*q[j];
     }
@@ -409,6 +410,7 @@ static void conj_grad(int colidx[],
   // The partition submatrix-vector multiply
   //---------------------------------------------------------------------
   sum = 0.0;
+  # pragma omp parallel for private(d, j, k)
   for (j = 0; j < lastrow - firstrow + 1; j++) {
     d = 0.0;
     for (k = rowstr[j]; k < rowstr[j+1]; k++) {
@@ -595,6 +597,8 @@ static void sparse(double a[],
       j = acol[i][nza];
 
       scale = size * aelt[i][nza];
+
+      //# pragma omp parallel for private(nzrow)
       for (nzrow = 0; nzrow < arow[i]; nzrow++) {
         jcol = acol[i][nzrow];
         va = aelt[i][nzrow] * scale;
