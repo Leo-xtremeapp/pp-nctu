@@ -1,3 +1,4 @@
+#include "mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -35,4 +36,4 @@ int main(int argc, char *argv[])
   printf("Done. Largest prime is %d Total primes %d\n",foundone,pc);
 
   return 0;
-} 
+}
