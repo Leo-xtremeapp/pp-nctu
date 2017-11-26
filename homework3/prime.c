@@ -38,13 +38,15 @@ int main(int argc, char *argv[])
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+  printf("%d %d\n", size, rank);
+
   pc = 4;
   _pc = 0;
   limit -= (limit & 1) ? 2 : 1;
   block = limit / size + 1;
 
   left = rank * block + 1;
-  right = rank * (block + 1);
+  right = (rank + 1) * block;
 
   for (n = left; n < right && n < limit; n += 2) {
     if (isprime(n)) {
@@ -59,17 +61,15 @@ int main(int argc, char *argv[])
 
   if (rank == 0) {
       pc += _pc;
+      foundone = _foundone;
 
       for(int i = 1; i < size; i++){
           MPI_Recv(&_pc, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
           pc += _pc;
           MPI_Recv(&_foundone, 1, MPI_INT, i, 1, MPI_COMM_WORLD, &status);
-          if(foundone < _foundone){
-              foundone = foundone;
-          }
-          printf("total: %d\n", pc);
+          foundone = foundone < _foundone ? _foundone : foundone;
       }
-      printf("Done. Largest prime is %d Total primes %d\n",foundone,pc);
+      printf("Done. Largest prime is %d Total primes %d\n", foundone, pc);
   }
   else {
       MPI_Send(&_pc, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
