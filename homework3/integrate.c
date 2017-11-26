@@ -1,3 +1,4 @@
+#include "mpi.h"
 #include <stdio.h>
 #include <math.h>
 
@@ -5,24 +6,59 @@
 
 int main(int argc, char **argv)
 {
-  long long i, num_intervals;
-  double rect_width, area, sum, x_middle;
+  long long i;
+  long long num_intervals;
+  double rect_width;
+  double area;
+  double sum;
+  double _sum;
+  double x_middle;
 
-  sscanf(argv[1],"%llu",&num_intervals);
+  int size;
+  int rank;
+  long long int left;
+  long long int right;
+  long long int block;
+
+  sscanf(argv[1], "%llu", &num_intervals);
+
+  MPI_Init(&argc, &argv);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   rect_width = PI / num_intervals;
 
+
+  MPI_Status status;
+
   sum = 0;
-  for(i = 1; i < num_intervals + 1; i++) {
+  _sum = 0;
 
-    /* find the middle of the interval on the X-axis. */
+  block = num_intervals / size + 1;
 
+  left = rank * block + 1;
+  right = (rank + 1) * block;
+
+  for(i = left; i <= right && i <= num_intervals; i++) {
     x_middle = (i - 0.5) * rect_width;
     area = sin(x_middle) * rect_width;
-    sum = sum + area;
+    _sum = _sum + area;
   }
 
-  printf("The total area is: %f\n", (float)sum);
+  if (rank == 0) {
+      sum += _sum;
+
+      for(int j = 1; j < size; j++){
+          MPI_Recv(&_sum, 1, MPI_INT, j, 0, MPI_COMM_WORLD, &status);
+          sum += _sum;
+      }
+      printf("The total area is: %f\n", (float)sum);
+  }
+  else {
+      MPI_Send(&_sum, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+  }
+
+  MPI_Finalize();
 
   return 0;
-}   
+}

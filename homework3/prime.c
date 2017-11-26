@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 
   MPI_Status status;
 
-  printf("rank %d, _pc = %d, _foundone = %d\n", rank, _pc, _foundone);
+  //printf("rank %d, _pc = %d, _foundone = %d\n", rank, _pc, _foundone);
 
   if (rank == 0) {
       pc += _pc;
