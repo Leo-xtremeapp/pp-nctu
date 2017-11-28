@@ -3,8 +3,11 @@
 #include <stdlib.h>
 #include <math.h>
 
-int isprime(int n) {
-  int i, squareroot;
+int isprime(long long int n) {
+  // var
+  long long int i;
+  int squareroot;
+
   if (n > 10) {
     squareroot = (int) sqrt(n);
     for (i = 3; i <= squareroot; i = i + 2)
@@ -38,20 +41,19 @@ int main(int argc, char *argv[])
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-  printf("%d %d\n", size, rank);
-
   pc = 4;
 
   _pc = 0;
   _foundone = 0;
 
-  limit -= (limit & 1) ? 2 : 1;
-  block = limit / size + 1;
+  block = (limit - 11) / size + 1;
 
-  left = rank * block + 1;
-  right = (rank + 1) * block;
+  left = rank * block + 11 + 1;
+  right = (rank + 1) * block + 11;
 
-  for (n = left; n < right && n < limit; n += 2) {
+  left += !(left & 1);
+
+  for (n = left; n <= right && n < limit; n += 2) {
     if (isprime(n)) {
       _pc++;
       _foundone = n;
