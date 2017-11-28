@@ -6,7 +6,7 @@
 int isprime(long long int n) {
   // var
   long long int i;
-  int squareroot;
+  long long int squareroot;
 
   if (n > 10) {
     squareroot = (int) sqrt(n);
