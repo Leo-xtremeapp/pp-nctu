@@ -41,7 +41,10 @@ int main(int argc, char *argv[])
   printf("%d %d\n", size, rank);
 
   pc = 4;
+
   _pc = 0;
+  _foundone = 0;
+
   limit -= (limit & 1) ? 2 : 1;
   block = limit / size + 1;
 
@@ -56,8 +59,6 @@ int main(int argc, char *argv[])
   }
 
   MPI_Status status;
-
-  //printf("rank %d, _pc = %d, _foundone = %d\n", rank, _pc, _foundone);
 
   if (rank == 0) {
       pc += _pc;
