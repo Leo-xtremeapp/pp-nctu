@@ -28,7 +28,6 @@ int main(int argc, char **argv)
 
   rect_width = PI / num_intervals;
 
-
   MPI_Status status;
 
   sum = 0;
@@ -49,13 +48,13 @@ int main(int argc, char **argv)
       sum += _sum;
 
       for(int j = 1; j < size; j++){
-          MPI_Recv(&_sum, 1, MPI_INT, j, 0, MPI_COMM_WORLD, &status);
+          MPI_Recv(&_sum, 1, MPI_DOUBLE, j, 0, MPI_COMM_WORLD, &status);
           sum += _sum;
       }
       printf("The total area is: %f\n", (float)sum);
   }
   else {
-      MPI_Send(&_sum, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+      MPI_Send(&_sum, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
   }
 
   MPI_Finalize();
