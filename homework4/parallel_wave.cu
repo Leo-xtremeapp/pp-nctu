@@ -25,8 +25,8 @@ int nsteps,                 	 /* number of time steps */
     rcode;                  	 /* generic return code */
 
 float  values[MAXPOINTS+2], 	 /* values at time t */
-       oldval[MAXPOINTS+2], 	 /* values at time (t-dt) */
-       newval[MAXPOINTS+2]; 	 /* values at time (t+dt) */
+       old_val[MAXPOINTS+2], 	 /* values at time (t-dt) */
+       new_val[MAXPOINTS+2]; 	 /* values at time (t+dt) */
 
 // cjyeh
 float  *values_d;
@@ -65,7 +65,7 @@ __global__ void run_parallel(float *values_d, int tpoints, int nsteps)
     int i, k;
     float x, fac, tmp;
     float dtime, c, dx, tau, sqtau;
-    float value, newval, oldval;
+    float value, new_val, old_val;
 
     /* init_line() */
     fac = 2.0 * PI;
@@ -73,7 +73,7 @@ __global__ void run_parallel(float *values_d, int tpoints, int nsteps)
     tmp = tpoints - 1;
     x = (k - 1) / tmp;
     value = sin (fac * x);
-    oldval = value;
+    old_val = value;
 
     /* do_math() */
     dtime = 0.3;
@@ -82,15 +82,15 @@ __global__ void run_parallel(float *values_d, int tpoints, int nsteps)
     tau = (c * dtime / dx);
     sqtau = tau * tau;
 
-    /* Initialize old values array */
+    /* update() */
     if(k <= tpoints) {
       for (i = 1; i<= nsteps; i++) {
         if ((k == 1) || (k  == tpoints))
-          newval = 0.0;
+          new_val = 0.0;
         else
-          newval = (2.0 * value) - oldval + (sqtau *  (-2.0) * value);
-        oldval = value;
-        value = newval;
+          new_val = (2.0 * value) - old_val + (sqtau * -2.0 * value);
+        old_val = value;
+        value = new_val;
       }
       values_d[k] = value;
     }
@@ -105,7 +105,7 @@ void printfinal()
 
    for (i = 1; i <= tpoints; i++) {
       printf("%6.4f ", values[i]);
-      if (i%10 == 0)
+      if (i % 10 == 0)
          printf("\n");
    }
 }
@@ -119,8 +119,8 @@ int main(int argc, char *argv[])
     int size;
     int block_num;
 
-    sscanf(argv[1],"%d",&tpoints);
-  	sscanf(argv[2],"%d",&nsteps);
+    sscanf(argv[1], "%d", &tpoints);
+  	sscanf(argv[2], "%d", &nsteps);
   	check_param();
 
     size = (tpoints + 1) * sizeof(float);
