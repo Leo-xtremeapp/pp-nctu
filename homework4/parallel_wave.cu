@@ -17,7 +17,6 @@
 #define BLOCK_SIZE 1024
 
 void check_param(void);
-void init_line(void);
 void update (void);
 void printfinal (void);
 
@@ -60,73 +59,40 @@ void check_param(void)
    printf("Using points = %d, steps = %d\n", tpoints, nsteps);
 }
 
-/**********************************************************************
- *     Initialize points on line
- *********************************************************************/
-__device__ void init_line(void)
+/* run_parallel */
+__global__ void run_parallel(float *values_d, int tpoints, int nsteps)
 {
-    int i, j;
-    float x, fac, k, tmp;
+    int i, k;
+    float x, fac, tmp;
+    float dtime, c, dx, tau, sqtau;
+    float value, newval, oldval;
 
-    /* Calculate initial values based on sine curve */
+    /* init_line() */
     fac = 2.0 * PI;
-    k = 0.0;
+    k = 1 + blockIdx.x * BLOCK_SIZE + threadIdx.x;
     tmp = tpoints - 1;
-    for (j = 1; j <= tpoints; j++) {
-      x = k/tmp;
-      values[j] = sin (fac * x);
-      k = k + 1.0;
-    }
+    x = (k - 1) / tmp;
+    value = sin (fac * x);
+    oldval = value;
 
-    /* Initialize old values array */
-    for (i = 1; i <= tpoints; i++)
-      oldval[i] = values[i];
-}
-
-/**********************************************************************
- *      Calculate new values using wave equation
- *********************************************************************/
-void do_math(int i)
-{
-    float c;
-    float dx;
-    float tau;
-    float dtime;
-    float sqtau;
-
-
-
+    /* do_math() */
     dtime = 0.3;
     c = 1.0;
     dx = 1.0;
     tau = (c * dtime / dx);
     sqtau = tau * tau;
-    newval[i] = (2.0 * values[i]) - oldval[i] + (sqtau *  (-2.0) * values[i]);
-}
 
-/**********************************************************************
- *     Update all values along line a specified number of times
- *********************************************************************/
-void update()
-{
-    int i, j;
-
-    /* Update values for each time step */
-    for (i = 1; i<= nsteps; i++) {
-      /* Update points along line for this time step */
-        for (j = 1; j <= tpoints; j++) {
-         /* global endpoints */
-            if ((j == 1) || (j  == tpoints))
-            newval[j] = 0.0;
-         else
-            do_math(j);
+    /* Initialize old values array */
+    if(k <= tpoints) {
+      for (i = 1; i<= nsteps; i++) {
+        if ((k == 1) || (k  == tpoints))
+          newval = 0.0;
+        else
+          newval = (2.0 * value) - oldval + (sqtau *  (-2.0) * value);
+        oldval = value;
+        value = newval;
       }
-
-      /* Update old values with new values */
-      for (j = 1; j <= tpoints; j++) {
-            oldval[j] = values[j];
-            values[j] = newval[j];
-      }
+      values_d[k] = value;
     }
 }
 
@@ -158,6 +124,7 @@ int main(int argc, char *argv[])
   	check_param();
 
     size = (tpoints + 1) * sizeof(float);
+    cudaMalloc((void**) &values_d, size);
 
     printf("Initializing points on the line...\n");
   	//init_line();
@@ -165,6 +132,11 @@ int main(int argc, char *argv[])
   	//update();
 
     block_num = tpoints / BLOCK_SIZE + !(tpoints % BLOCK_SIZE == 0);
+
+    run_parallel<<<block_num, BLOCK_SIZE>>>(values_d, tpoints, nsteps);
+
+    cudaMemcpy(values, values_d, size, cudaMemcpyDeviceToHost);
+    cudaFree(values_d);
 
     printf("Printing final results...\n");
   	printfinal();
