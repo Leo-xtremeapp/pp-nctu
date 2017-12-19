@@ -11,18 +11,11 @@ struct task_data {
 };
 
 // global
-BYTE block[16];
-BYTE key[16 * (14 + 1)];
 int num_of_cpu;
 int total_task;
 int task_per_thread;
-
-void print_bytes(BYTE b[], int len) {
-  for (int i = 0; i < len; i++)
-    printf("%d ", b[i]);
-  printf("\n");
-}
-
+BYTE block[16];
+BYTE key[16 * (14 + 1)];
 BYTE sbox[] = {
   99,124,119,123,242,107,111,197,48,1,103,43,254,215,171,
   118,202,130,201,125,250,89,71,240,173,212,162,175,156,164,114,192,183,253,
@@ -38,12 +31,16 @@ BYTE sbox[] = {
   158,225,248,152,17,105,217,142,148,155,30,135,233,206,85,40,223,140,161,
   137,13,191,230,66,104,65,153,45,15,176,84,187,22
 };
-
 BYTE shift_row_tab[] = { 0, 5, 10, 15, 4, 9, 14, 3, 8, 13, 2, 7, 12, 1, 6, 11 };
-
 BYTE sbox_inverse[256];
 BYTE shift_row_tab_inverse[16];
 BYTE xtime[256];
+
+void print_bytes(BYTE b[], int len) {
+  for (int i = 0; i < len; i++)
+    printf("%d ", b[i]);
+  printf("\n");
+}
 
 void sub_bytes(BYTE state[], BYTE sbox[]) {
   int i;
@@ -176,7 +173,7 @@ void encrypt(int keyLen) {
     task[j].end = task[j].end > total_task ? total_task : task[j].end;
 
     if (pthread_create(&threads[i], &attr, _encrypt, (void *) &task[j])) {
-      fprintf(stderr, "%s\n");
+      fprintf(stderr, "%s: line %d\n", __func__, __LINE__);
       exit(1);
     }
   }
@@ -226,7 +223,7 @@ void decrypt(int keyLen) {
     task[j].end = task[j].end > total_task ? total_task : task[j].end;
 
     if (pthread_create(&threads[i], &attr, _decrypt, (void *) &task[j])) {
-      fprintf(stderr, "%s\n");
+      fprintf(stderr, "%s: line %d\n", __func__, __LINE__);
       exit(1);
     }
   }
