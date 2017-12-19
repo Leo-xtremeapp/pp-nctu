@@ -14,6 +14,8 @@ struct task_data {
 BYTE block[16];
 BYTE key[16 * (14 + 1)];
 int num_of_cpu;
+int total_task;
+int task_per_thread;
 
 void print_bytes(BYTE b[], int len) {
   for (int i = 0; i < len; i++)
@@ -156,8 +158,6 @@ void encrypt(int keyLen) {
   // var
   int i;
   int l = keyLen;
-  int total_task = keyLen / 16 - 2;
-  int task_per_thread = total_task / num_of_cpu + 1;
   struct task_data* task = malloc(num_of_cpu * sizeof(struct task_data));
 
   print_bytes(block, 16);
@@ -190,19 +190,51 @@ void encrypt(int keyLen) {
   add_round_key(block, &key[l - 16]);
 }
 
-void decrypt(int keyLen) {
+void _decrypt(void* task) {
   // var
-  int l = keyLen;
-  add_round_key(block, &key[l - 16]);
-  shift_rows(block, shift_row_tab_inverse);
-  sub_bytes(block, sbox_inverse);
+  int begin = ((struct task_data*) task)->begin;
+  int end = ((struct task_data*) task)->end;
 
-  for (int i = l - 32; i >= 16; i -= 16) {
-    add_round_key(block, &key[i]);
+  for (int i = begin; i <= end; i++) {
+    add_round_key(block, &key[i * 16]);
     inverse_mix_columns(block);
     shift_rows(block, shift_row_tab_inverse);
     sub_bytes(block, sbox_inverse);
   }
+}
+
+void decrypt(int keyLen) {
+  // var
+  int i;
+  int l = keyLen;
+  struct task_data* task = malloc(num_of_cpu * sizeof(struct task_data));
+
+  add_round_key(block, &key[l - 16]);
+  shift_rows(block, shift_row_tab_inverse);
+  sub_bytes(block, sbox_inverse);
+
+  // var
+  pthread_attr_t attr;
+  pthread_t* threads = malloc(num_of_cpu * sizeof(pthread_t));
+
+  pthread_attr_init(&attr);
+
+  for (int j = 0; j < num_of_cpu; j++) {
+    // var
+    task[j].begin = j * task_per_thread + 1;
+    task[j].end = (j + 1) * task_per_thread;
+    task[j].end = task[j].end > total_task ? total_task : task[j].end;
+
+    if (pthread_create(&threads[i], &attr, _decrypt, (void *) &task[j])) {
+      fprintf(stderr, "%s\n");
+      exit(1);
+    }
+  }
+
+  for (int j = 0; j < num_of_cpu; j++) {
+    pthread_join(threads[j], NULL);
+  }
+
   add_round_key(block, &key[0]);
 }
 
@@ -216,6 +248,7 @@ int main(int argc, char* argv[]) {
   int keyLen = 32;
   int maxKeyLen = 16 * (14 + 1);
   int blockLen = 16;
+  int expandKeyLen;
 
   // init
   init();
@@ -233,7 +266,11 @@ int main(int argc, char* argv[]) {
   printf("\nOriginal key:\n");
   print_bytes(key, keyLen);
 
-  int expandKeyLen = expend_key(key, keyLen);
+  expandKeyLen = expend_key(key, keyLen);
+
+  // init var for pthread
+  total_task = keyLen / 16 - 2;
+  task_per_thread = total_task / num_of_cpu + 1;
 
   printf("\nExpended key:\n");
   print_bytes(key, expandKeyLen);
