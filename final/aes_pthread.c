@@ -1,8 +1,19 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
 
 #define BYTE unsigned char
+#define NUM_OF_CPU 4
+
+struct task_data {
+  int begin;
+  int end;
+};
+
+// global
+BYTE block[16];
+BYTE key[16 * (14 + 1)];
 
 void print_bytes(BYTE b[], int len) {
   for (int i = 0; i < len; i++)
@@ -10,9 +21,6 @@ void print_bytes(BYTE b[], int len) {
   printf("\n");
 }
 
-/******************************************************************************/
-
-// The following lookup tables and functions are for internal use only!
 BYTE sbox[] = {
   99,124,119,123,242,107,111,197,48,1,103,43,254,215,171,
   118,202,130,201,125,250,89,71,240,173,212,162,175,156,164,114,192,183,253,
@@ -140,28 +148,76 @@ int expend_key(BYTE key[], int keyLen) {
   return ks;
 }
 
+void _encrypt(void* task) {
+  // var
+  int begin = ((struct task_data*) task)->begin;
+  int end = ((struct task_data*) task)->end;
+
+  for (int i = begin; i <= end; i++) {
+    sub_bytes(block, sbox);
+    shift_rows(block, shift_row_tab);
+    mix_columns(block);
+    add_round_key(block, &key[i * 16]);
+  }
+}
+
 // encrypt: encrypt the 16 byte array 'block' with the previously expanded key 'key'.
-void encrypt(BYTE block[], BYTE key[], int keyLen) {
+void encrypt(int keyLen) {
   // var
   int i;
   int l = keyLen;
+  int total_task = keyLen / 16 - 2;
+  int task_per_thread = total_task / NUM_OF_CPU + 1;
+  struct task_data* task = malloc(NUM_OF_CPU * sizeof(struct task_data));
 
   print_bytes(block, 16);
   add_round_key(block, &key[0]);
 
-  for (i = 16; i < l - 16; i += 16) {
-    sub_bytes(block, sbox);
-    shift_rows(block, shift_row_tab);
-    mix_columns(block);
-    add_round_key(block, &key[i]);
+  // var
+  pthread_attr_t attr;
+  pthread_t* threads = malloc(NUM_OF_CPU * sizeof(pthread_t));
+
+  pthread_attr_init(&attr);
+
+  for (int j = 0; j < NUM_OF_CPU; j++) {
+    // var
+    task[j].begin = j * task_per_thread + 1;
+    task[j].end = (j + 1) * task_per_thread;
+    task[j].end = task[j].end > total_task ? total_task : task[j].end;
+
+    for (int k = task[j].begin; k <= task[j].end; k++) {
+      printf(" %d", k);
+    }
+    printf("\n");
+
+
+    if (pthread_create(&threads[i], &attr, _encrypt, (void *) &task[j])) {
+      fprintf(stderr, "%s\n");
+      exit(1);
+    }
   }
+
+  for (i = 16; i < l - 16; i += 16) {
+    printf("i = %d\n", i);
+  }
+
+  /*
+  for (int j = 1; j < keyLen / 16 - 1; j++) {
+    printf("j = %d\n", j);
+  }
+  */
+
+  for (int j = 0; j < NUM_OF_CPU; j++) {
+    pthread_join(threads[j], NULL);
+  }
+
   sub_bytes(block, sbox);
   shift_rows(block, shift_row_tab);
   add_round_key(block, &key[i]);
 }
 
 // decrypt: decrypt the 16 byte array 'block' with the previously expanded key 'key'.
-void decrypt(BYTE block[], BYTE key[], int keyLen) {
+void decrypt(int keyLen) {
   // var
   int l = keyLen;
   add_round_key(block, &key[l - 16]);
@@ -178,26 +234,13 @@ void decrypt(BYTE block[], BYTE key[], int keyLen) {
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 3) {
-    fprintf(stderr, "Usage: ./aes_parallel <num_of_cpu>");
-    exit()
-  }
-
-
   // var
-  BYTE block[16];
-  BYTE key[16 * (14 + 1)];
   int keyLen = 32;
   int maxKeyLen = 16 * (14 + 1);
   int blockLen = 16;
-  pthread_attr_t attr;
-  pthread_t* thread = maclloc(num_of_cpu * sizeof(pthread_t));
 
   // init
   init();
-  pthread_attr_init(&attr);
-
-  for ()
 
   for (int i = 0; i < 16; i++)
     block[i] = 0x11 * i;
@@ -216,12 +259,12 @@ int main(int argc, char* argv[]) {
   printf("\nExpended key:\n");
   print_bytes(key, expandKeyLen);
 
-  encrypt(block, key, expandKeyLen);
+  encrypt(expandKeyLen);
 
   printf("\nEncrypted:\n");
   print_bytes(block, blockLen);
 
-  decrypt(block, key, expandKeyLen);
+  decrypt(expandKeyLen);
 
   printf("\nDecrypted:\n");
   print_bytes(block, blockLen);
