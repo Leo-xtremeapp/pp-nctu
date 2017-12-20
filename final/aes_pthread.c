@@ -10,11 +10,17 @@ struct task_data {
   int end;
 };
 
+struct file_data {
+  BYTE* pixel;
+  unsigned long length;
+};
+
 // global
 int num_of_cpu;
 int total_task;
 int task_per_thread;
-BYTE block[16];
+//BYTE block[16];
+BYTE* block;
 BYTE key[16 * (14 + 1)];
 BYTE sbox[] = {
   99,124,119,123,242,107,111,197,48,1,103,43,254,215,171,
@@ -104,8 +110,8 @@ void init() {
 
 void release() {}
 
-int expend_key(BYTE key[], int keyLen) {
-  int kl = keyLen, ks, Rcon = 1, i, j;
+int expend_key(BYTE key[], int key_len) {
+  int kl = key_len, ks, Rcon = 1, i, j;
   BYTE temp[4], temp2[4];
   switch (kl) {
     case 16: ks = 16 * (10 + 1); break;
@@ -151,10 +157,10 @@ void _encrypt(void* task) {
   }
 }
 
-void encrypt(int keyLen) {
+void encrypt(int key_len) {
   // var
   int i;
-  int l = keyLen;
+  int l = key_len;
   struct task_data* task = malloc(num_of_cpu * sizeof(struct task_data));
 
   print_bytes(block, 16);
@@ -200,10 +206,10 @@ void _decrypt(void* task) {
   }
 }
 
-void decrypt(int keyLen) {
+void decrypt(int key_len) {
   // var
   int i;
-  int l = keyLen;
+  int l = key_len;
   struct task_data* task = malloc(num_of_cpu * sizeof(struct task_data));
 
   add_round_key(block, &key[l - 16]);
@@ -235,6 +241,49 @@ void decrypt(int keyLen) {
   add_round_key(block, &key[0]);
 }
 
+struct file_data* read_file(char *file_name) {
+  // var
+  FILE *fd;
+  struct file_data* file = malloc(sizeof(struct file_data));
+
+  // load file
+  fd = fopen(file_name, "rb");
+  if(!fd){
+    fprintf(stderr, "%s: line %d\n", __func__, __LINE__);
+    return 0;
+  }
+
+  // get file length
+  fseek(fd, 0, SEEK_END);
+  file->length = ftell(fd);
+  fseek(fd, 0, SEEK_SET);
+
+  file->pixel = (BYTE*) malloc(file->length + 1);
+  if(!file->pixel){
+    fprintf(stderr, "%s: line %d\n", __func__, __LINE__);
+    fclose(fd);
+    return 0;
+  }
+
+  fread(file->pixel, file->length, sizeof(BYTE), fd);
+  fclose(fd);
+
+  return file;
+}
+
+void write_file(struct file_data* file) {
+  // var
+  FILE* fd;
+
+  fd = fopen("out.jpg", "wb");
+  if(!fd){
+    fprintf(stderr, "%s: line %d\n", __func__, __LINE__);
+  }
+
+  fwrite(file->pixel, 1, file->length * sizeof(BYTE), fd);
+  fclose(fd);
+}
+
 int main(int argc, char* argv[]) {
   if (argc != 2) {
     printf("Usage: ./aes_pthread num_of_cpu\n");
@@ -242,45 +291,67 @@ int main(int argc, char* argv[]) {
   }
 
   // var
-  int keyLen = 32;
-  int maxKeyLen = 16 * (14 + 1);
-  int blockLen = 16;
-  int expandKeyLen;
+  int key_len = 32;
+  int max_key_len = 16 * (14 + 1);
+  int block_len = 16;
+  int expend_key_len;
+  struct file_data* file;
 
   // init
   init();
   num_of_cpu = atoi(argv[1]);
 
+  file = read_file("minions.jpg");
+
+  //write_file(file);
+
+  printf("file.length = %d\n", file->length);
+  printf("file.size = %d\n", (file->length - 13) * sizeof(BYTE));
+
+  int new_file_length = file->length - 13;
+
+  if (new_file_length % 4 != 0) {
+    new_file_length = (new_file_length / 4 + 1) * 4;
+  }
+
+  block = malloc(new_file_length * sizeof(BYTE));
+
+  memcpy(&block, file->pixel[11], new_file_length);
+
+  /*
   for (int i = 0; i < 16; i++)
     block[i] = 0x11 * i;
+  */
+
+  block_len = new_file_length;
 
   printf("Original message:\n");
-  print_bytes(block, 16);
+  //print_bytes(block, 16);
 
-  for (int i = 0; i < keyLen; i++)
+  for (int i = 0; i < key_len; i++)
     key[i] = i;
 
   printf("\nOriginal key:\n");
-  print_bytes(key, keyLen);
+  print_bytes(key, key_len);
 
-  expandKeyLen = expend_key(key, keyLen);
+  expend_key_len = expend_key(key, key_len);
 
   // init var for pthread
-  total_task = keyLen / 16 - 2;
+  total_task = key_len / 16 - 2;
   task_per_thread = total_task / num_of_cpu + 1;
 
   printf("\nExpended key:\n");
-  print_bytes(key, expandKeyLen);
+  print_bytes(key, expend_key_len);
 
-  encrypt(expandKeyLen);
+  encrypt(expend_key_len);
 
   printf("\nEncrypted:\n");
-  print_bytes(block, blockLen);
+  print_bytes(block, block_len);
 
-  decrypt(expandKeyLen);
+  decrypt(expend_key_len);
 
   printf("\nDecrypted:\n");
-  print_bytes(block, blockLen);
+  print_bytes(block, block_len);
 
   release();
 }
