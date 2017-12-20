@@ -4,8 +4,13 @@
 
 #define BYTE unsigned char
 
+struct file_info {
+  BYTE data[1000000];
+  unsigned long length;
+};
+
 // global
-BYTE block[16];
+BYTE block[1000000];
 BYTE key[16 * (14 + 1)];
 
 void print_bytes(BYTE b[], int len) {
@@ -82,8 +87,6 @@ void inverse_mix_columns(BYTE state[]) {
   }
 }
 
-// init: initialize the tables needed at runtime.
-// Call this function before the (first) key expansion.
 void init() {
   int i;
   for (i = 0; i < 256; i++)
@@ -98,17 +101,10 @@ void init() {
   }
 }
 
-// release: release memory reserved by init.
-// Call this function after the last encryption/decryption operation.
 void release() {}
 
-/* expend_key: expand a cipher key. Depending on the desired encryption
-   strength of 128, 192 or 256 bits 'key' has to be a byte array of length
-   16, 24 or 32, respectively. The key expansion is done "in place", meaning
-   that the array 'key' is modified.
-*/
-int expend_key(BYTE key[], int keyLen) {
-  int kl = keyLen, ks, Rcon = 1, i, j;
+int expend_key(BYTE key[], int key_len) {
+  int kl = key_len, ks, Rcon = 1, i, j;
   BYTE temp[4], temp2[4];
   switch (kl) {
     case 16: ks = 16 * (10 + 1); break;
@@ -141,11 +137,10 @@ int expend_key(BYTE key[], int keyLen) {
   return ks;
 }
 
-// encrypt: encrypt the 16 byte array 'block' with the previously expanded key 'key'.
-void encrypt(int keyLen) {
+void encrypt(int key_len) {
   // var
   int i;
-  int l = keyLen;
+  int l = key_len;
 
   print_bytes(block, 16);
   add_round_key(block, &key[0]);
@@ -162,10 +157,9 @@ void encrypt(int keyLen) {
   add_round_key(block, &key[i]);
 }
 
-// decrypt: decrypt the 16 byte array 'block' with the previously expanded key 'key'.
-void decrypt(int keyLen) {
+void decrypt(int key_len) {
   // var
-  int l = keyLen;
+  int l = key_len;
   add_round_key(block, &key[l - 16]);
   shift_rows(block, shift_row_tab_inverse);
   sub_bytes(block, sbox_inverse);
@@ -179,41 +173,105 @@ void decrypt(int keyLen) {
   add_round_key(block, &key[0]);
 }
 
+struct file_info* read_file(char *file_name) {
+  // var
+  FILE *fd;
+  struct file_info* file = malloc(sizeof(struct file_info));
+
+  // load file
+  fd = fopen(file_name, "rb");
+  if(!fd){
+    fprintf(stderr, "%s: line %d\n", __func__, __LINE__);
+    return 0;
+  }
+
+  // get file length
+  fseek(fd, 0, SEEK_END);
+  file->length = ftell(fd);
+  fseek(fd, 0, SEEK_SET);
+
+  /*
+  file->data = (BYTE*) malloc(file->length + 1);
+  if(!file->data){
+    fprintf(stderr, "%s: line %d\n", __func__, __LINE__);
+    fclose(fd);
+    return 0;
+  }
+  */
+
+  fread(file->data, file->length, sizeof(BYTE), fd);
+  fclose(fd);
+
+  return file;
+}
+
+void write_file(struct file_info* file) {
+  // var
+  FILE* fd;
+
+  fd = fopen("out.jpg", "wb");
+  if(!fd){
+    fprintf(stderr, "%s: line %d\n", __func__, __LINE__);
+  }
+
+  fwrite(file->data, 1, file->length * sizeof(BYTE), fd);
+  fclose(fd);
+}
+
 int main(int argc, char* argv[]) {
   // var
-  int keyLen = 32;
-  int maxKeyLen = 16 * (14 + 1);
-  int blockLen = 16;
+  int key_len = 32;
+  int max_key_len = 16 * (14 + 1);
+  int block_len = 16;
+  struct file_info* file;
 
   // init
   init();
 
+  file = read_file("minions.jpg");
+
+  block_len = file->length - 13;
+  block_len = (block_len / 4) * 4;
+
+  printf("block_len = %d\n", block_len);
+
+  memcpy(&block, &file->data[11], block_len * sizeof(BYTE));
+
+  /*
   for (int i = 0; i < 16; i++)
     block[i] = 0x11 * i;
+  */
 
   printf("Original message:\n");
   print_bytes(block, 16);
 
-  for (int i = 0; i < keyLen; i++)
+  for (int i = 0; i < key_len; i++)
     key[i] = i;
 
   printf("\nOriginal key:\n");
-  print_bytes(key, keyLen);
+  print_bytes(key, key_len);
 
-  int expandKeyLen = expend_key(key, keyLen);
+  int expend_key_len = expend_key(key, key_len);
 
   printf("\nExpended key:\n");
-  print_bytes(key, expandKeyLen);
+  print_bytes(key, expend_key_len);
 
-  encrypt(expandKeyLen);
+  encrypt(expend_key_len);
+
+  //memcpy(&file->data[11], &block, block_len * sizeof(BYTE));
+
+  //write_file(file);
 
   printf("\nEncrypted:\n");
-  print_bytes(block, blockLen);
+  print_bytes(block, block_len);
 
-  decrypt(expandKeyLen);
+  decrypt(expend_key_len);
+
+  memcpy(&file->data[11], &block, block_len * sizeof(BYTE));
+  write_file(file);
 
   printf("\nDecrypted:\n");
-  print_bytes(block, blockLen);
+  print_bytes(block, block_len);
 
   release();
 }
