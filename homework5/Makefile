@@ -3,7 +3,7 @@ FLAGS=-lOpenCL
 
 all:
 	$(CC) image-histogram.cpp -o image-histogram
-	#$(CC) parallel_wave.cu -o parallel_wave
+	$(CC) histogram.cpp $(FLAGS) -o histogram
 
 clean:
 	rm -f image-histogram
