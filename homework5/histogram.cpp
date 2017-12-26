@@ -171,7 +171,7 @@ int main(int argc, char const *argv[]) {
   }
 
   for (unsigned int i = 0; i < 256 * 3; i++) {
-    if (i % 256 == 0 && i != 0)
+    if (i && i % 256 == 0)
       outfile << endl;
     outfile << results[i] << " ";
   }
@@ -185,6 +185,8 @@ int main(int argc, char const *argv[]) {
   clReleaseKernel(kernel);
   clReleaseCommandQueue(commands);
   clReleaseContext(context);
+
+  delete [] image;
 
 	return 0;
 }
