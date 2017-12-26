@@ -1,5 +1,5 @@
 CC=g++
-FLAGS=-lOpenCL
+FLAGS=-lOpenCL -O3
 
 all:
 	$(CC) image-histogram.cpp -o image-histogram
@@ -7,3 +7,5 @@ all:
 
 clean:
 	rm -f image-histogram
+	rm -f histogram
+	rm -f 0556563.out
