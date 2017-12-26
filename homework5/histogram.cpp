@@ -1,6 +1,6 @@
 #include <iostream>
-#include <string>
 #include <fstream>
+#include <string>
 #include <vector>
 
 #ifdef __APPLE__
@@ -60,10 +60,10 @@ int main(int argc, char const *argv[]) {
   rows = buffer / 3;
 
   image = new unsigned int[rows];
-  for (unsigned int i = 0; i < rows * cols && (infile >> buffer); i++)
+  for (unsigned int i = 0; i < rows * cols && (infile >> buffer); i++) {
     image[i] = buffer;
-
-
+    cout << buffer << endl;
+  }
 
   clGetPlatformIDs(1, &platform, NULL);
 
@@ -81,6 +81,7 @@ int main(int argc, char const *argv[]) {
 
   max_items = max_work[0] * max_work[1] * max_work[2];
 
+  cout << max_items << endl;
 
 
 
