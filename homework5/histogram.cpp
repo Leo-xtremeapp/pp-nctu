@@ -43,16 +43,15 @@ int main(int argc, char const *argv[]) {
   size_t local_work_size;
   size_t global_work_size;
 
-
   cl_int err;
   cl_uint num;
 
-  cl_device_id device_id;
-  cl_platform_id platform_id;
-  cl_program program;
   cl_kernel kernel;
-  cl_command_queue commands;
   cl_context context;
+  cl_program program;
+  cl_device_id device_id;
+  cl_command_queue commands;
+  cl_platform_id platform_id;
 
   cl_mem input;
   cl_mem output;
@@ -64,13 +63,15 @@ int main(int argc, char const *argv[]) {
   unsigned int results[256 * 3];
 
   ifstream infile("input", ios_base::in);
-  ofstream outfile("xxxxxx.out", ios_base::out);
+  ofstream outfile("0556563.out", ios_base::out);
 
   // load input
   infile >> buffer;
   total_tasks = buffer / 3;
 
+  // init
   image = new unsigned int[total_tasks * 3];
+  memset(image, 0, total_tasks * 3);
 
   for (unsigned int i = 0; i < total_tasks * 3 && (infile >> buffer); i++) {
     image[i] = buffer;
@@ -125,14 +126,14 @@ int main(int argc, char const *argv[]) {
     return EXIT_FAILURE;
   }
 
-  input = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(unsigned int) * total_tasks * 3, NULL, NULL);
-  output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(unsigned int) * 256 * 3, NULL, NULL);
+  input = clCreateBuffer(context, CL_MEM_READ_ONLY, total_tasks * 3 * sizeof(unsigned int), NULL, NULL);
+  output = clCreateBuffer(context, CL_MEM_WRITE_ONLY, 256 * 3 * sizeof(unsigned int), NULL, NULL);
   if (!input || !output) {
     printf("clCreateBuffer()\n");
     return EXIT_FAILURE;
   }
 
-  err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, sizeof(unsigned int) * total_tasks * 3, image, 0, NULL, NULL);
+  err = clEnqueueWriteBuffer(commands, input, CL_TRUE, 0, total_tasks * 3 * sizeof(unsigned int), image, 0, NULL, NULL);
   if (err != CL_SUCCESS) {
     printf("clEnqueueWriteBuffer(): %d\n", err);
     return EXIT_FAILURE;
@@ -163,14 +164,9 @@ int main(int argc, char const *argv[]) {
 
   clFinish(commands);
 
-  err = clEnqueueReadBuffer(commands, output, CL_TRUE, 0, sizeof(unsigned int) * 256 * 3, results, 0, NULL, NULL);
+  err = clEnqueueReadBuffer(commands, output, CL_TRUE, 0, 256 * 3 * sizeof(unsigned int), results, 0, NULL, NULL);
   if (err != CL_SUCCESS) {
     printf("clEnqueueReadBuffer(): %d\n", err);
-
-    printf("%d, %d, %d, %d, %d\n", CL_INVALID_COMMAND_QUEUE, CL_INVALID_CONTEXT, CL_INVALID_MEM_OBJECT, CL_INVALID_VALUE, CL_INVALID_EVENT_WAIT_LIST);
-    printf("%d, %d, %d, %d, %d\n", CL_MISALIGNED_SUB_BUFFER_OFFSET, CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST, CL_MEM_OBJECT_ALLOCATION_FAILURE, CL_OUT_OF_RESOURCES);
-    cout << CL_OUT_OF_HOST_MEMORY << endl;
-
     return EXIT_FAILURE;
   }
 
